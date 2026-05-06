@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Colaboradores - GEPI</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+<!-- MENU -->
+<div class="sidebar">
+  <h2>GEPI</h2>
+  <ul>
+    <li><a href="dashboard.html">Dashboard</a></li>
+    <li class="active"><a href="colaboradores.html">Colaboradores</a></li>
+    <li><a href="usuarios.html">Usuários</a></li>
+    <li><a href="equipamentos.html">Equipamentos</a></li>
+    <li><a href="emprestimos.html">Empréstimos</a></li>
+    <li><a href="historico.html">Histórico</a></li>
+    <li><a href="perfil.html">Perfil</a></li>
+    <li><a href="#" onclick="logout()">Sair</a></li>
+  </ul>
+</div>
+
+<!-- CONTEÚDO -->
+<div class="main">
+
+  <div class="header">
+    <h1>Colaboradores</h1>
+  </div>
+
+  <!-- FORM -->
+  <div class="card form-card">
+    <h3>Cadastrar / Editar Colaborador</h3>
+
+    <div class="form-group">
+      <input type="text" id="nome" placeholder="Nome">
+      <input type="text" id="setor" placeholder="Setor">
+      <input type="text" id="cargo" placeholder="Cargo">
+      <input type="text" id="telefone" placeholder="Telefone">
+    </div>
+
+    <button class="btn-primary" onclick="salvar()">Salvar</button>
+  </div>
+
+  <!-- BUSCA -->
+  <div class="card search-card">
+    <input type="text" id="busca" placeholder="Buscar por nome">
+    <button class="btn-secondary" onclick="buscar()">Buscar</button>
+    <button class="btn-light" onclick="carregar()">Limpar</button>
+  </div>
+
+  <!-- TABELA -->
+  <div class="card table-card">
+    <h3>Lista de Colaboradores</h3>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Setor</th>
+          <th>Cargo</th>
+          <th>Telefone</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tabela"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+
+let idEditando = null;
+
+// 🔒 PROTEÇÃO
+const usuario = JSON.parse(localStorage.getItem('usuario'));
+if (!usuario) {
+  window.location.href = 'login.html';
+}
+
+// 🚪 LOGOUT
+function logout() {
+  localStorage.removeItem('usuario');
+  window.location.href = 'login.html';
+}
+
+// SALVAR
+async function salvar() {
+  const nome = document.getElementById('nome').value;
+  const setor = document.getElementById('setor').value;
+  const cargo = document.getElementById('cargo').value;
+  const telefone = document.getElementById('telefone').value;
+
+  if (idEditando) {
+    await fetch(`http://localhost:3000/colaboradores/${idEditando}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nome, setor, cargo, telefone })
+    });
+    idEditando = null;
+  } else {
+    await fetch('http://localhost:3000/colaboradores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nome, setor, cargo, telefone })
+    });
+  }
+
+  limparCampos();
+  carregar();
+}
+
+function limparCampos() {
+  document.getElementById('nome').value = '';
+  document.getElementById('setor').value = '';
+  document.getElementById('cargo').value = '';
+  document.getElementById('telefone').value = '';
+}
+
+// CARREGAR
+async function carregar() {
+  const res = await fetch('http://localhost:3000/colaboradores');
+  const dados = await res.json();
+
+  let tabela = document.getElementById('tabela');
+  tabela.innerHTML = '';
+
+  dados.forEach(c => {
+    tabela.innerHTML += `
+      <tr>
+        <td>${c.nome}</td>
+        <td>${c.setor}</td>
+        <td>${c.cargo}</td>
+        <td>${c.telefone}</td>
+        <td>
+          <button class="btn-edit" onclick="editar(${c.id}, '${c.nome}', '${c.setor}', '${c.cargo}', '${c.telefone}')">Editar</button>
+          <button class="btn-delete" onclick="deletar(${c.id})">Excluir</button>
+        </td>
+      </tr>
+    `;
+  });
+}
+
+// BUSCAR
+async function buscar() {
+  const nome = document.getElementById('busca').value;
+  const res = await fetch(`http://localhost:3000/colaboradores/busca/${nome}`);
+  const dados = await res.json();
+
+  let tabela = document.getElementById('tabela');
+  tabela.innerHTML = '';
+
+  dados.forEach(c => {
+    tabela.innerHTML += `
+      <tr>
+        <td>${c.nome}</td>
+        <td>${c.setor}</td>
+        <td>${c.cargo}</td>
+        <td>${c.telefone}</td>
+        <td>
+          <button class="btn-edit" onclick="editar(${c.id}, '${c.nome}', '${c.setor}', '${c.cargo}', '${c.telefone}')">Editar</button>
+          <button class="btn-delete" onclick="deletar(${c.id})">Excluir</button>
+        </td>
+      </tr>
+    `;
+  });
+}
+
+// EDITAR
+function editar(id, nome, setor, cargo, telefone) {
+  document.getElementById('nome').value = nome;
+  document.getElementById('setor').value = setor;
+  document.getElementById('cargo').value = cargo;
+  document.getElementById('telefone').value = telefone;
+
+  idEditando = id;
+}
+
+// DELETAR
+async function deletar(id) {
+  if(confirm("Deseja excluir este colaborador?")) {
+    await fetch(`http://localhost:3000/colaboradores/${id}`, {
+      method: 'DELETE'
+    });
+    carregar();
+  }
+}
+
+carregar();
+
+</script>
+
+</body>
+</html>

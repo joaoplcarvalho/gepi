@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Empréstimos - GEPI</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+<div class="sidebar">
+  <h2>GEPI</h2>
+  <ul>
+    <li><a href="dashboard.html">Dashboard</a></li>
+    <li><a href="colaboradores.html">Colaboradores</a></li>
+    <li><a href="usuarios.html">Usuários</a></li>
+    <li><a href="equipamentos.html">Equipamentos</a></li>
+    <li class="active"><a href="emprestimos.html">Empréstimos</a></li>
+    <li><a href="historico.html">Histórico</a></li>
+    <li><a href="perfil.html">Perfil</a></li>
+    <li><a href="#" onclick="logout()">Sair</a></li>
+  </ul>
+</div>
+
+<div class="main">
+
+  <div class="header">
+    <h1>Empréstimos</h1>
+  </div>
+
+  <!-- FORM -->
+  <div class="card form-card">
+    <h3>Novo Empréstimo</h3>
+
+    <div class="form-group">
+
+      <!-- ✅ AGORA TEM OPÇÃO PADRÃO -->
+      <select id="colaborador">
+        <option value="">Selecione um colaborador</option>
+      </select>
+
+      <select id="equipamento" onchange="atualizarEstoque()">
+        <option value="">Selecione um equipamento</option>
+      </select>
+
+      <input type="number" id="quantidade" placeholder="Quantidade">
+
+      <input type="date" id="data">
+    </div>
+
+    <p id="infoEstoque" style="margin-top:10px; font-weight:bold;"></p>
+
+    <button class="btn-primary" onclick="salvar()">Registrar</button>
+  </div>
+
+  <!-- TABELA -->
+  <div class="card table-card">
+    <h3>Lista de Empréstimos</h3>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Colaborador</th>
+          <th>EPI</th>
+          <th>Qtd</th>
+          <th>Retirada</th>
+          <th>Devolução</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tabela"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+
+let equipamentos = [];
+
+// 🔒 PROTEÇÃO
+const usuario = JSON.parse(localStorage.getItem('usuario'));
+if (!usuario) {
+  window.location.href = 'login.html';
+}
+
+// 🚪 LOGOUT
+function logout() {
+  localStorage.removeItem('usuario');
+  window.location.href = 'login.html';
+}
+
+// 🔽 CARREGAR SELECTS
+async function carregarSelects() {
+
+  const colab = await fetch('http://localhost:3000/colaboradores').then(r => r.json());
+  equipamentos = await fetch('http://localhost:3000/equipamentos').then(r => r.json());
+
+  let selectColab = document.getElementById('colaborador');
+  let selectEquip = document.getElementById('equipamento');
+
+  // ✅ NÃO APAGA A OPÇÃO PADRÃO
+  selectColab.innerHTML = '<option value="">Selecione um colaborador</option>';
+  selectEquip.innerHTML = '<option value="">Selecione um equipamento</option>';
+
+  colab.forEach(c => {
+    selectColab.innerHTML += `<option value="${c.id}">${c.nome}</option>`;
+  });
+
+  equipamentos.forEach(e => {
+    selectEquip.innerHTML += `<option value="${e.id}">
+      ${e.nome}
+    </option>`;
+  });
+}
+
+// 🔥 MOSTRAR ESTOQUE
+function atualizarEstoque() {
+
+  const id = document.getElementById('equipamento').value;
+
+  if (!id) {
+    document.getElementById('infoEstoque').innerText = '';
+    return;
+  }
+
+  const eq = equipamentos.find(e => e.id == id);
+
+  document.getElementById('infoEstoque').innerText =
+    `Estoque disponível: ${eq.quantidade}`;
+}
+
+// 💾 SALVAR
+async function salvar() {
+
+  const colaborador_id = document.getElementById('colaborador').value;
+  const equipamento_id = document.getElementById('equipamento').value;
+  const quantidade = parseInt(document.getElementById('quantidade').value);
+  const data_devolucao = document.getElementById('data').value;
+
+  // ✅ VALIDAÇÕES NOVAS
+  if (!colaborador_id) {
+    alert("Selecione um colaborador!");
+    return;
+  }
+
+  if (!equipamento_id) {
+    alert("Selecione um equipamento!");
+    return;
+  }
+
+  const eq = equipamentos.find(e => e.id == equipamento_id);
+
+  if (!quantidade || quantidade <= 0) {
+    alert("Informe uma quantidade válida!");
+    return;
+  }
+
+  if (quantidade > eq.quantidade) {
+    alert("Quantidade maior que o estoque!");
+    return;
+  }
+
+  if (!data_devolucao) {
+    alert("Informe a data de devolução!");
+    return;
+  }
+
+  const res = await fetch('http://localhost:3000/emprestimos', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ colaborador_id, equipamento_id, quantidade, data_devolucao })
+  });
+
+  alert(await res.text());
+
+  document.getElementById('quantidade').value = '';
+
+  carregar();
+  carregarSelects();
+}
+
+// 📋 CARREGAR TABELA
+async function carregar() {
+
+  const dados = await fetch('http://localhost:3000/emprestimos').then(r => r.json());
+
+  let tabela = document.getElementById('tabela');
+  tabela.innerHTML = '';
+
+  dados.forEach(e => {
+
+    tabela.innerHTML += `
+      <tr>
+        <td>${e.colaborador}</td>
+        <td>${e.equipamento}</td>
+        <td>${e.quantidade || 1}</td>
+        <td>${formatarData(e.data_retirada)}</td>
+        <td>${e.data_devolucao ? formatarData(e.data_devolucao) : '-'}</td>
+        <td class="${e.status === 'Em uso' ? 'status-ativo' : 'status-ok'}">
+          ${e.status}
+        </td>
+        <td>
+          ${e.status === 'Em uso'
+            ? `<button class="btn-edit" onclick="devolver(${e.id})">Devolver</button>`
+            : ''}
+        </td>
+      </tr>
+    `;
+  });
+}
+
+// 🔁 DEVOLVER
+async function devolver(id) {
+
+  if (!confirm("Confirmar devolução?")) return;
+
+  await fetch(`http://localhost:3000/emprestimos/devolver/${id}`, {
+    method: 'PUT'
+  });
+
+  carregar();
+  carregarSelects();
+}
+
+// 📅 FORMATAR DATA
+function formatarData(data) {
+  return new Date(data).toLocaleDateString('pt-BR');
+}
+
+// INIT
+carregarSelects();
+carregar();
+
+</script>
+
+</body>
+</html>

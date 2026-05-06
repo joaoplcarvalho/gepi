@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Equipamentos - GEPI</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+<div class="sidebar">
+  <h2>GEPI</h2>
+  <ul>
+    <li><a href="dashboard.html">Dashboard</a></li>
+    <li><a href="colaboradores.html">Colaboradores</a></li>
+    <li><a href="usuarios.html">Usuários</a></li>
+    <li class="active"><a href="equipamentos.html">Equipamentos</a></li>
+    <li><a href="emprestimos.html">Empréstimos</a></li>
+    <li><a href="historico.html">Histórico</a></li>
+    <li><a href="perfil.html">Perfil</a></li>
+    <li><a href="#" onclick="logout()">Sair</a></li>
+  </ul>
+</div>
+
+<div class="main">
+
+  <div class="header">
+    <h1>Equipamentos (EPIs)</h1>
+  </div>
+
+  <!-- FORM -->
+  <div class="card form-card">
+    <h3>Cadastrar / Editar Equipamento</h3>
+
+    <div class="form-group">
+      <input type="text" id="nome" placeholder="Nome">
+      <input type="text" id="tipo" placeholder="Tipo">
+      <input type="number" id="quantidade" placeholder="Quantidade">
+      <input type="date" id="validade">
+    </div>
+
+    <button class="btn-primary" onclick="salvar()">Salvar</button>
+  </div>
+
+  <!-- BUSCA -->
+  <div class="card search-card">
+    <input type="text" id="busca" placeholder="Buscar por nome">
+    <button class="btn-secondary" onclick="buscar()">Buscar</button>
+    <button class="btn-light" onclick="carregar()">Limpar</button>
+  </div>
+
+  <!-- TABELA -->
+  <div class="card table-card">
+    <h3>Lista de Equipamentos</h3>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Tipo</th>
+          <th>Quantidade</th>
+          <th>Validade</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tabela"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+
+let idEditando = null;
+
+// PROTEÇÃO
+const usuario = JSON.parse(localStorage.getItem('usuario'));
+if (!usuario) {
+  window.location.href = 'login.html';
+}
+
+// LOGOUT
+function logout() {
+  localStorage.removeItem('usuario');
+  window.location.href = 'login.html';
+}
+
+// SALVAR
+async function salvar() {
+  const nome = document.getElementById('nome').value;
+  const tipo = document.getElementById('tipo').value;
+  const quantidade = document.getElementById('quantidade').value;
+  const validade = document.getElementById('validade').value;
+
+  if (idEditando) {
+    await fetch(`http://localhost:3000/equipamentos/${idEditando}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nome, tipo, quantidade, validade })
+    });
+    idEditando = null;
+  } else {
+    await fetch('http://localhost:3000/equipamentos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nome, tipo, quantidade, validade })
+    });
+  }
+
+  limparCampos();
+  carregar();
+}
+
+function limparCampos() {
+  document.getElementById('nome').value = '';
+  document.getElementById('tipo').value = '';
+  document.getElementById('quantidade').value = '';
+  document.getElementById('validade').value = '';
+}
+
+// CARREGAR
+async function carregar() {
+  const res = await fetch('http://localhost:3000/equipamentos');
+  const dados = await res.json();
+
+  let tabela = document.getElementById('tabela');
+  tabela.innerHTML = '';
+
+  dados.forEach(e => {
+    tabela.innerHTML += `
+      <tr>
+        <td>${e.nome}</td>
+        <td>${e.tipo}</td>
+        <td>${e.quantidade}</td>
+        <td>${e.validade ? e.validade.split('T')[0] : ''}</td>
+        <td>
+          <button class="btn-edit" onclick="editar(${e.id}, '${e.nome}', '${e.tipo}', ${e.quantidade}, '${e.validade}')">Editar</button>
+          <button class="btn-delete" onclick="deletar(${e.id})">Excluir</button>
+        </td>
+      </tr>
+    `;
+  });
+}
+
+// BUSCAR
+async function buscar() {
+  const nome = document.getElementById('busca').value;
+
+  const res = await fetch(`http://localhost:3000/equipamentos/busca/${nome}`);
+  const dados = await res.json();
+
+  let tabela = document.getElementById('tabela');
+  tabela.innerHTML = '';
+
+  dados.forEach(e => {
+    tabela.innerHTML += `
+      <tr>
+        <td>${e.nome}</td>
+        <td>${e.tipo}</td>
+        <td>${e.quantidade}</td>
+        <td>${e.validade ? e.validade.split('T')[0] : ''}</td>
+        <td>
+          <button class="btn-edit" onclick="editar(${e.id}, '${e.nome}', '${e.tipo}', ${e.quantidade}, '${e.validade}')">Editar</button>
+          <button class="btn-delete" onclick="deletar(${e.id})">Excluir</button>
+        </td>
+      </tr>
+    `;
+  });
+}
+
+// EDITAR
+function editar(id, nome, tipo, quantidade, validade) {
+  document.getElementById('nome').value = nome;
+  document.getElementById('tipo').value = tipo;
+  document.getElementById('quantidade').value = quantidade;
+  document.getElementById('validade').value = validade ? validade.split('T')[0] : '';
+
+  idEditando = id;
+}
+
+// DELETAR
+async function deletar(id) {
+  if(confirm("Deseja excluir este equipamento?")) {
+    await fetch(`http://localhost:3000/equipamentos/${id}`, {
+      method: 'DELETE'
+    });
+    carregar();
+  }
+}
+
+carregar();
+
+</script>
+
+</body>
+</html>

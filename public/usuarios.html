@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Usuários - GEPI</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+<div class="sidebar">
+  <h2>GEPI</h2>
+  <ul>
+    <li><a href="dashboard.html">Dashboard</a></li>
+    <li><a href="colaboradores.html">Colaboradores</a></li>
+    <li class="active"><a href="usuarios.html">Usuários</a></li>
+    <li><a href="equipamentos.html">Equipamentos</a></li>
+    <li><a href="emprestimos.html">Empréstimos</a></li>
+    <li><a href="historico.html">Histórico</a></li>
+    <li><a href="perfil.html">Perfil</a></li>
+    <li><a href="#" onclick="logout()">Sair</a></li>
+  </ul>
+</div>
+
+<div class="main">
+
+  <div class="header">
+    <h1>Usuários</h1>
+  </div>
+
+  <div class="card">
+    <h3>Lista de Usuários</h3>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Email</th>
+          <th>Tipo</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tabela"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+
+// 🔒 PROTEÇÃO
+const usuario = JSON.parse(localStorage.getItem('usuario'));
+
+if (!usuario) {
+  window.location.href = 'login.html';
+}
+
+// 🚪 LOGOUT
+function logout() {
+  localStorage.removeItem('usuario');
+  window.location.href = 'login.html';
+}
+
+// CARREGAR
+async function carregar() {
+  const res = await fetch('http://localhost:3000/usuarios');
+  const dados = await res.json();
+
+  let tabela = document.getElementById('tabela');
+  tabela.innerHTML = '';
+
+  dados.forEach(u => {
+
+    let botoes = '';
+
+    // 🔥 SÓ ADMIN VÊ BOTÕES
+    if (usuario.tipo === 'admin') {
+      botoes = `
+        <button class="btn-delete" onclick="deletar(${u.id})">Excluir</button>
+      `;
+    }
+
+    tabela.innerHTML += `
+      <tr>
+        <td>${u.nome}</td>
+        <td>${u.email}</td>
+        <td>${u.tipo}</td>
+        <td>${botoes}</td>
+      </tr>
+    `;
+  });
+}
+
+// DELETAR
+async function deletar(id) {
+  if(confirm("Deseja excluir este usuário?")) {
+    await fetch(`http://localhost:3000/usuarios/${id}`, {
+      method: 'DELETE'
+    });
+
+    carregar();
+  }
+}
+
+carregar();
+
+</script>
+
+</body>
+</html>

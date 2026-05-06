@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Perfil - GEPI</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+<div class="sidebar">
+  <h2>GEPI</h2>
+  <ul>
+    <li><a href="dashboard.html">Dashboard</a></li>
+    <li><a href="colaboradores.html">Colaboradores</a></li>
+    <li><a href="usuarios.html">Usuários</a></li>
+    <li><a href="equipamentos.html">Equipamentos</a></li>
+    <li><a href="emprestimos.html">Empréstimos</a></li>
+    <li><a href="historico.html">Histórico</a></li>
+    <li class="active"><a href="perfil.html">Perfil</a></li>
+    <li><a href="#" onclick="logout()">Sair</a></li>
+  </ul>
+</div>
+
+<div class="main">
+
+  <div class="header">
+    <h1>Perfil</h1>
+  </div>
+
+  <div class="profile-card">
+
+    <div class="profile-avatar">
+      👤
+    </div>
+
+    <div class="profile-info">
+      <p><strong>Nome:</strong> <span id="nome"></span></p>
+      <p><strong>Email:</strong> <span id="email"></span></p>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+
+// 🔒 PROTEÇÃO
+const usuario = JSON.parse(localStorage.getItem('usuario'));
+
+if (!usuario) {
+  window.location.href = 'login.html';
+} else {
+  document.getElementById('nome').innerText = usuario.nome;
+  document.getElementById('email').innerText = usuario.email;
+
+  document.querySelector('.profile-avatar').innerText = usuario.nome[0];
+}
+
+// 🚪 LOGOUT
+function logout() {
+  localStorage.removeItem('usuario');
+  window.location.href = 'login.html';
+}
+
+</script>
+
+</body>
+</html>

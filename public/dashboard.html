@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+<div class="sidebar">
+  <h2>GEPI</h2>
+  <ul>
+    <li class="active"><a href="dashboard.html">Dashboard</a></li>
+    <li><a href="colaboradores.html">Colaboradores</a></li>
+    <li><a href="usuarios.html">Usuários</a></li>
+    <li><a href="equipamentos.html">Equipamentos</a></li>
+    <li><a href="emprestimos.html">Empréstimos</a></li>
+    <li><a href="historico.html">Histórico</a></li>
+    <li><a href="perfil.html">Perfil</a></li>
+    <li><a href="#" onclick="logout()">Sair</a></li>
+  </ul>
+</div>
+
+<div class="main">
+
+  <div class="header">
+    <h1>Dashboard</h1>
+    <span id="dataAtual"></span>
+  </div>
+
+  <!-- CARDS -->
+  <div class="cards">
+    <div class="card">
+      <h3>Colaboradores</h3>
+      <p id="totalColaboradores">0</p>
+    </div>
+
+    <div class="card">
+      <h3>EPIs disponíveis</h3>
+      <p id="totalEPIs">0</p>
+    </div>
+
+    <div class="card">
+      <h3>Emprestados</h3>
+      <p id="emprestados">0</p>
+    </div>
+
+    <div class="card">
+      <h3>Vencidos</h3>
+      <p id="vencidos">0</p>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <div class="box">
+      <h3>Alertas</h3>
+      <div id="alertas"></div>
+    </div>
+
+  </div>
+
+  <h3>Últimos empréstimos</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Colaborador</th>
+        <th>EPI</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="tabela"></tbody>
+  </table>
+
+</div>
+
+<script>
+
+// 🔒 PROTEÇÃO
+const usuario = JSON.parse(localStorage.getItem('usuario'));
+if (!usuario) window.location.href = 'login.html';
+
+// 🚪 LOGOUT
+function logout() {
+  localStorage.removeItem('usuario');
+  window.location.href = 'login.html';
+}
+
+// 📅 DATA
+document.getElementById('dataAtual').innerText =
+  new Date().toLocaleDateString('pt-BR');
+
+// 🚀 CARREGAR DASHBOARD
+async function carregarDashboard() {
+
+  // 🔹 PEGAR DADOS
+  const colaboradores = await fetch('http://localhost:3000/colaboradores').then(r => r.json());
+  const equipamentos = await fetch('http://localhost:3000/equipamentos').then(r => r.json());
+  const emprestimos = await fetch('http://localhost:3000/emprestimos').then(r => r.json());
+
+  // 🔹 CARDS
+  document.getElementById('totalColaboradores').innerText = colaboradores.length;
+
+  const totalEPIs = equipamentos.reduce((soma, e) => soma + e.quantidade, 0);
+  document.getElementById('totalEPIs').innerText = totalEPIs;
+
+  const emUso = emprestimos.filter(e => e.status === 'Em uso').length;
+  document.getElementById('emprestados').innerText = emUso;
+
+  const hoje = new Date();
+
+  const vencidos = emprestimos.filter(e => {
+    if (!e.data_devolucao) return false;
+    return new Date(e.data_devolucao) < hoje && e.status === 'Em uso';
+  }).length;
+
+  document.getElementById('vencidos').innerText = vencidos;
+
+  // 🔹 ALERTAS
+  let alertasDiv = document.getElementById('alertas');
+  alertasDiv.innerHTML = '';
+
+  emprestimos.forEach(e => {
+    if (e.data_devolucao && new Date(e.data_devolucao) < hoje && e.status === 'Em uso') {
+      alertasDiv.innerHTML += `<div class="alert">⚠ ${e.colaborador} está atrasado</div>`;
+    }
+  });
+
+  equipamentos.forEach(eq => {
+    if (eq.validade && new Date(eq.validade) < hoje) {
+      alertasDiv.innerHTML += `<div class="alert">⚠ ${eq.nome} vencido</div>`;
+    }
+  });
+
+  if (alertasDiv.innerHTML === '') {
+    alertasDiv.innerHTML = '<div class="alert-ok">Tudo Ok!</div>';
+  }
+
+  // 🔹 ÚLTIMOS EMPRÉSTIMOS
+  let tabela = document.getElementById('tabela');
+  tabela.innerHTML = '';
+
+  emprestimos.slice(-5).reverse().forEach(e => {
+    tabela.innerHTML += `
+      <tr>
+        <td>${e.colaborador}</td>
+        <td>${e.equipamento}</td>
+        <td class="${e.status === 'Em uso' ? 'status-ativo' : 'status-ok'}">
+          ${e.status}
+        </td>
+      </tr>
+    `;
+  });
+}
+
+// INIT
+carregarDashboard();
+
+</script>
+
+</body>
+</html>

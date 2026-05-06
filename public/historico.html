@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Histórico - GEPI</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+<div class="sidebar">
+  <h2>GEPI</h2>
+  <ul>
+    <li><a href="dashboard.html">Dashboard</a></li>
+    <li><a href="colaboradores.html">Colaboradores</a></li>
+    <li><a href="usuarios.html">Usuários</a></li>
+    <li><a href="equipamentos.html">Equipamentos</a></li>
+    <li><a href="emprestimos.html">Empréstimos</a></li>
+    <li class="active"><a href="historico.html">Histórico</a></li>
+    <li><a href="perfil.html">Perfil</a></li>
+    <li><a href="#" onclick="logout()">Sair</a></li>
+  </ul>
+</div>
+
+<div class="main">
+
+  <div class="header">
+    <h1>Histórico de Empréstimos</h1>
+  </div>
+
+  <!-- FILTROS -->
+  <div class="card search-card">
+    <input type="text" id="busca" placeholder="Buscar colaborador">
+    
+    <select id="filtroStatus">
+      <option value="">Todos</option>
+      <option value="Em uso">Em uso</option>
+      <option value="Devolvido">Devolvido</option>
+    </select>
+
+    <button class="btn-primary" onclick="filtrar()">Filtrar</button>
+    <button class="btn-light" onclick="carregar()">Limpar</button>
+  </div>
+
+  <!-- TABELA -->
+  <div class="card table-card">
+    <h3>Registros</h3>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Colaborador</th>
+          <th>EPI</th>
+          <th>Qtd</th>
+          <th>Retirada</th>
+          <th>Devolução</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="tabela"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+
+// 🔒 PROTEÇÃO
+const usuario = JSON.parse(localStorage.getItem('usuario'));
+if (!usuario) window.location.href = 'login.html';
+
+// 🚪 LOGOUT
+function logout() {
+  localStorage.removeItem('usuario');
+  window.location.href = 'login.html';
+}
+
+// 📋 CARREGAR
+async function carregar() {
+
+  const dados = await fetch('http://localhost:3000/emprestimos').then(r => r.json());
+
+  renderTabela(dados);
+}
+
+// 🔎 FILTRAR
+async function filtrar() {
+
+  const nome = document.getElementById('busca').value.toLowerCase();
+  const status = document.getElementById('filtroStatus').value;
+
+  const dados = await fetch('http://localhost:3000/emprestimos').then(r => r.json());
+
+  let filtrados = dados.filter(e => {
+
+    let okNome = e.colaborador.toLowerCase().includes(nome);
+    let okStatus = status ? e.status === status : true;
+
+    return okNome && okStatus;
+  });
+
+  renderTabela(filtrados);
+}
+
+// 🧠 RENDERIZAR
+function renderTabela(dados) {
+
+  let tabela = document.getElementById('tabela');
+  tabela.innerHTML = '';
+
+  if (dados.length === 0) {
+    tabela.innerHTML = `<tr><td colspan="6">Nenhum registro encontrado</td></tr>`;
+    return;
+  }
+
+  dados.reverse().forEach(e => {
+
+    tabela.innerHTML += `
+      <tr>
+        <td>${e.colaborador}</td>
+        <td>${e.equipamento}</td>
+        <td>${e.quantidade || 1}</td>
+        <td>${formatarData(e.data_retirada)}</td>
+        <td>${e.data_devolucao ? formatarData(e.data_devolucao) : '-'}</td>
+        <td class="${e.status === 'Em uso' ? 'status-ativo' : 'status-ok'}">
+          ${e.status}
+        </td>
+      </tr>
+    `;
+  });
+}
+
+// 📅 DATA
+function formatarData(data) {
+  return new Date(data).toLocaleDateString('pt-BR');
+}
+
+// INIT
+carregar();
+
+</script>
+
+</body>
+</html>
